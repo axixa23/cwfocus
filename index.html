@@ -548,7 +548,7 @@ async function fetchMessages() {
 
     // Fetch unread messages from each room (limit to 10 rooms to avoid rate limit)
     const msgs = [];
-    const toFetch = targetRooms.slice(0, 10);
+    const toFetch = targetRooms.slice(0, 100);
 
     for (const room of toFetch) {
       if (room.unread_num === 0) continue;
