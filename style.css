@@ -323,6 +323,24 @@ header {
 .btn-stock { background: var(--text-primary); color: #fff; border-color: var(--text-primary); }
 .btn-stock:hover { background: #333; }
 
+
+.room-name-link {
+    text-decoration: none;
+    color: inherit;
+    display: inline-block;
+  }
+  .room-name-link:hover .room-name {
+    text-decoration: underline;
+    opacity: 0.8;
+  }
+  .stock-card-room a {
+    color: #555;
+    text-decoration: none;
+  }
+  .stock-card-room a:hover {
+    text-decoration: underline;
+  }
+
 /* ===== EMPTY STATE ===== */
 .empty-state { text-align: center; padding: 60px 20px; color: var(--text-muted); }
 .empty-state .icon { font-size: 32px; margin-bottom: 12px; }
