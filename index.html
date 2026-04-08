@@ -173,6 +173,10 @@
     transition: box-shadow 0.15s, transform 0.15s, opacity 0.3s;
     position: relative;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    min-height: 200px; 
+}
   }
   .card:hover { box-shadow: var(--shadow-hover); }
   .card.exiting {
