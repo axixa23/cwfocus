@@ -164,10 +164,9 @@ async function fetchMessages() {
     if (!roomsRes.ok) throw new Error(`APIエラー: ${roomsRes.status}`);
     
     const rooms = await roomsRes.json();
-    // 未読がある部屋に絞る
     const targetRooms = rooms.filter(r => r.unread_num > 0).slice(0, 40);
 
-    let newMsgsAdded = 0;
+    let newMsgsAdded = 0; // 表示対象として追加された数のみ数える
 
     for (const room of targetRooms) {
       try {
@@ -204,7 +203,11 @@ async function fetchMessages() {
             time: formatTime(m.send_time),
             msgType,
           });
-          newMsgsAdded++;
+
+          // 【修正】現在フィルターで表示許可されている種別のみをカウント
+          if (shouldShow(msgType)) {
+            newMsgsAdded++;
+          }
         }
       } catch(e) {
         if (e.message.includes('API制限')) {
@@ -218,7 +221,7 @@ async function fetchMessages() {
     // 全メッセージを送信時間順にソート（新しい順）
     state.messages.sort((a, b) => b.sendTime - a.sendTime);
 
-    // メモリ肥大化防止（最新200件）
+    // メモリ肥大化防止
     if (state.messages.length > 200) {
       state.messages = state.messages.slice(0, 200);
     }
@@ -226,6 +229,7 @@ async function fetchMessages() {
     state.isDemo = false;
     document.getElementById('demoNotice').style.display = 'none';
     
+    // 表示上の新着数に基づいてメッセージを変える
     setStatus(newMsgsAdded > 0 ? `${newMsgsAdded}件の新着を追加` : '新しいメッセージはありません');
     renderCards();
     updateCounts();
@@ -238,19 +242,13 @@ async function fetchMessages() {
 }
 
 function detectMsgType(msg, room, myId) {
-  // 1. ピン留めを最優先（ピン部屋の発言は内容に関わらずピンとして扱う）
   if (room.sticky) return 'pin';
-
-  // 2. ダイレクトチャット判定
   if (room.type === 'direct') return 'dm';
-  
-  // 3. 自分へのTO/返信判定
   if (myId && msg.body) {
     const hasTo = msg.body.includes(`[To:${myId}]`);
     const hasReply = msg.body.includes(`[rp aid=${myId}]`);
     if (hasTo || hasReply) return 'to';
   }
-  
   return 'other';
 }
 
@@ -258,7 +256,6 @@ function shouldShow(msgType) {
   if (msgType === 'to') return state.filters.to;
   if (msgType === 'dm') return state.filters.dm;
   if (msgType === 'pin') return state.filters.pin;
-  // 'other' は基本表示しない（必要なら true に変更）
   return false; 
 }
 
