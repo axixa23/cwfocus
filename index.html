@@ -74,7 +74,6 @@
 
 </div>
 
-<!-- SETTINGS MODAL -->
 <div class="overlay" id="settingsOverlay">
   <div class="modal">
     <h2>設定</h2>
@@ -166,7 +165,7 @@ async function fetchMessages() {
     const rooms = await roomsRes.json();
     const targetRooms = rooms.filter(r => r.unread_num > 0).slice(0, 40);
 
-    let newMsgsAdded = 0; // 表示対象として追加された数のみ数える
+    let newMsgsAdded = 0;
 
     for (const room of targetRooms) {
       try {
@@ -181,16 +180,13 @@ async function fetchMessages() {
         let roomMsgs = await msgsRes.json();
         if (!Array.isArray(roomMsgs)) continue;
 
-        // 未読分のみに絞り込む（末尾からunread_num件を取得）
         const unreadMsgs = roomMsgs.slice(-room.unread_num);
 
         for (const m of unreadMsgs) {
           const msgId = `${room.room_id}-${m.message_id}`;
           
-          // 重複排除：既にリストにあるIDはスキップ
           if (state.messages.some(existing => existing.id === msgId)) continue;
 
-          // 種別を判定
           const msgType = detectMsgType(m, room, state.myId);
           
           state.messages.push({
@@ -204,7 +200,6 @@ async function fetchMessages() {
             msgType,
           });
 
-          // 【修正】現在フィルターで表示許可されている種別のみをカウント
           if (shouldShow(msgType)) {
             newMsgsAdded++;
           }
@@ -218,10 +213,8 @@ async function fetchMessages() {
       }
     }
 
-    // 全メッセージを送信時間順にソート（新しい順）
     state.messages.sort((a, b) => b.sendTime - a.sendTime);
 
-    // メモリ肥大化防止
     if (state.messages.length > 200) {
       state.messages = state.messages.slice(0, 200);
     }
@@ -229,7 +222,6 @@ async function fetchMessages() {
     state.isDemo = false;
     document.getElementById('demoNotice').style.display = 'none';
     
-    // 表示上の新着数に基づいてメッセージを変える
     setStatus(newMsgsAdded > 0 ? `${newMsgsAdded}件の新着を追加` : '新しいメッセージはありません');
     renderCards();
     updateCounts();
@@ -281,8 +273,8 @@ function formatTime(unix) {
 
 function loadDemoMessages() {
   state.messages = [
-    { id: 'demo1', roomName: 'プロジェクトA', sender: '田中 太郎', body: '[To:me] 資料確認お願いします。', time: '12分前', msgType: 'to', sendTime: Date.now()/1000 },
-    { id: 'demo2', roomName: 'ダイレクト: 鈴木', sender: '鈴木 花子', body: '明日の会議、16時からです。', time: '45分前', msgType: 'dm', sendTime: Date.now()/1000 - 1800 }
+    { id: 'demo1', roomId: '0', roomName: 'プロジェクトA', sender: '田中 太郎', body: '[To:me] 資料確認お願いします。', time: '12分前', msgType: 'to', sendTime: Date.now()/1000 },
+    { id: 'demo2', roomId: '0', roomName: 'ダイレクト: 鈴木', sender: '鈴木 花子', body: '明日の会議、16時からです。', time: '45分前', msgType: 'dm', sendTime: Date.now()/1000 - 1800 }
   ];
   state.isDemo = true;
   renderCards();
@@ -306,10 +298,14 @@ function renderCards() {
 function cardHTML(m) {
   const typeLabel = { to: '@TO', dm: 'DM', pin: 'ピン' }[m.msgType] || '';
   const body = escHtml(m.body).replace(/\[(To|rp)[^\]]+\]/g, '<span style="color:#7c5cc8;font-weight:500">$&</span>');
+  const roomUrl = `https://www.chatwork.com/#!rid${m.roomId}`;
+
   return `
     <div class="card type-${m.msgType}" id="card-${m.id}">
       <div class="card-meta">
-        <span class="room-name">${escHtml(m.roomName)}</span>
+        <a href="${roomUrl}" target="_blank" rel="noopener noreferrer" class="room-name-link">
+          <span class="room-name">${escHtml(m.roomName)}</span>
+        </a>
         ${typeLabel ? `<span class="msg-type-tag ${m.msgType}">${typeLabel}</span>` : ''}
         <span class="card-time">${m.time}</span>
       </div>
@@ -374,15 +370,22 @@ function renderStock() {
     list.innerHTML = ''; empty.style.display = 'block'; return;
   }
   empty.style.display = 'none';
-  list.innerHTML = state.stock.map(m => `
+  list.innerHTML = state.stock.map(m => {
+    const roomUrl = `https://www.chatwork.com/#!rid${m.roomId}`;
+    return `
     <div class="stock-card">
       <div class="stock-card-body">
         <div class="stock-card-sender">${escHtml(m.sender)}</div>
         <div class="stock-card-text">${escHtml(m.body)}</div>
-        <div class="stock-card-room">${escHtml(m.roomName)} · ${m.time}</div>
+        <div class="stock-card-room">
+          <a href="${roomUrl}" target="_blank" rel="noopener noreferrer">
+            ${escHtml(m.roomName)}
+          </a>
+          · ${m.time}
+        </div>
       </div>
       <button class="btn-unstock" onclick="unstockCard('${m.id}')">削除</button>
-    </div>`).join('');
+    </div>`}).join('');
 }
 
 function updateCounts() {
