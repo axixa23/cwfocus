@@ -36,29 +36,21 @@
     line-height: 1.6;
   }
 
-  /* ===== LAYOUT ===== */
   .app { max-width: 680px; margin: 0 auto; padding: 0 16px; }
 
-  /* ===== HEADER ===== */
   header {
     display: flex;
     align-items: center;
     justify-content: space-between;
     padding: 20px 0 16px;
     border-bottom: 1px solid var(--border);
-    margin-bottom: 0;
     position: sticky;
     top: 0;
     background: var(--bg);
     z-index: 100;
   }
 
-  .logo {
-    font-size: 15px;
-    font-weight: 500;
-    letter-spacing: -0.02em;
-    color: var(--text-primary);
-  }
+  .logo { font-size: 15px; font-weight: 500; letter-spacing: -0.02em; }
   .logo span { color: var(--text-muted); font-weight: 300; }
 
   .header-actions { display: flex; gap: 8px; align-items: center; }
@@ -71,17 +63,14 @@
     cursor: pointer;
     display: flex; align-items: center; justify-content: center;
     color: var(--text-secondary);
-    font-size: 15px;
     transition: all 0.15s;
   }
-  .btn-icon svg { display: block; width: 18px; height: 18px; }
+  .btn-icon svg { width: 18px; height: 18px; }
   .btn-icon:hover { border-color: var(--text-secondary); color: var(--text-primary); }
   .btn-icon.active { background: var(--text-primary); color: #fff; border-color: var(--text-primary); }
 
-  /* ===== TABS ===== */
   .tabs {
     display: flex;
-    gap: 0;
     padding: 12px 0 0;
     border-bottom: 1px solid var(--border);
     margin-bottom: 16px;
@@ -93,19 +82,16 @@
     color: var(--text-secondary);
     border-bottom: 2px solid transparent;
     margin-bottom: -1px;
-    transition: all 0.15s;
     display: flex; align-items: center; gap: 6px;
   }
   .tab.active { color: var(--text-primary); border-bottom-color: var(--text-primary); }
-  .tab:hover:not(.active) { color: var(--text-primary); }
   .badge {
     background: var(--tag-bg); color: var(--tag-text);
     font-size: 11px; font-family: 'DM Mono', monospace;
-    padding: 1px 6px; border-radius: 20px; min-width: 20px; text-align: center;
+    padding: 1px 6px; border-radius: 20px;
   }
   .tab.active .badge { background: var(--text-primary); color: #fff; }
 
-  /* ===== FILTER BAR ===== */
   .filter-bar {
     display: none;
     gap: 8px;
@@ -125,19 +111,12 @@
     font-size: 12px;
     color: var(--text-secondary);
     background: var(--surface);
-    user-select: none;
     transition: all 0.15s;
   }
-  .toggle-chip.on {
-    background: var(--text-primary); color: #fff; border-color: var(--text-primary);
-  }
-  .toggle-chip .dot {
-    width: 6px; height: 6px; border-radius: 50%;
-    background: currentColor; opacity: 0.5;
-  }
+  .toggle-chip.on { background: var(--text-primary); color: #fff; border-color: var(--text-primary); }
+  .toggle-chip .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: 0.5; }
   .toggle-chip.on .dot { opacity: 1; }
 
-  /* ===== STATUS BAR ===== */
   .status-bar {
     display: flex; align-items: center; justify-content: space-between;
     padding: 8px 0;
@@ -155,21 +134,15 @@
     cursor: pointer;
     font-size: 12px;
     color: var(--text-secondary);
-    font-family: 'DM Sans', sans-serif;
     transition: all 0.15s;
   }
   .btn-reload:hover { border-color: var(--text-secondary); color: var(--text-primary); }
   .btn-reload.spinning .icon { animation: spin 0.8s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
 
-  #btnClearAll {
-    background: transparent;
-    border-color: transparent;
-    color: var(--text-muted);
-  }
+  #btnClearAll { background: transparent; border-color: transparent; color: var(--text-muted); }
   #btnClearAll:hover { color: var(--text-primary); }
 
-  /* ===== CARDS ===== */
   .card-list { display: flex; flex-direction: column; gap: 8px; padding-bottom: 40px; }
 
   .card {
@@ -178,190 +151,80 @@
     border-radius: var(--radius);
     padding: 16px;
     box-shadow: var(--shadow);
-    transition: box-shadow 0.15s, transform 0.15s, opacity 0.3s;
+    transition: all 0.3s;
     position: relative;
-    overflow: hidden;
     display: flex;
     flex-direction: column;
     min-height: 200px; 
   }
   .card:hover { box-shadow: var(--shadow-hover); }
-  .card.exiting {
-    animation: cardExit 0.35s cubic-bezier(0.4,0,1,1) forwards;
-  }
+  .card.exiting { animation: cardExit 0.35s forwards; }
   @keyframes cardExit {
-    0% { opacity: 1; transform: translateX(0) scaleY(1); max-height: 300px; margin-bottom: 8px; }
-    40% { opacity: 0; transform: translateX(40px) scaleY(0.95); }
-    100% { opacity: 0; transform: translateX(40px) scaleY(0); max-height: 0; margin-bottom: 0; padding: 0; }
-  }
-  .card.stocking {
-    animation: cardStock 0.35s cubic-bezier(0.4,0,1,1) forwards;
-  }
-  @keyframes cardStock {
-    0% { opacity: 1; transform: translateX(0) scaleY(1); max-height: 300px; margin-bottom: 8px; }
-    40% { opacity: 0; transform: translateX(-40px) scaleY(0.95); }
-    100% { opacity: 0; transform: translateX(-40px) scaleY(0); max-height: 0; margin-bottom: 0; padding: 0; }
+    100% { opacity: 0; transform: translateX(40px) scaleY(0); max-height: 0; margin: 0; padding: 0; }
   }
 
   .card::before {
-    content: '';
-    position: absolute; left: 0; top: 0; bottom: 0;
-    width: 3px;
-    border-radius: 12px 0 0 12px;
+    content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; border-radius: 12px 0 0 12px;
   }
   .card.type-to::before { background: #c8b8f0; }
   .card.type-dm::before { background: #a8d4c8; }
   .card.type-pinned::before { background: #f0d4a8; }
 
-  .card-meta {
-    display: flex; align-items: center; gap: 8px;
-    margin-bottom: 8px;
-  }
+  .card-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
   .room-name {
-    font-size: 11px;
-    color: var(--text-muted);
-    font-weight: 500;
-    letter-spacing: 0.02em;
-    text-transform: uppercase;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 180px;
+    font-size: 11px; color: var(--text-muted); font-weight: 500;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px;
   }
   .msg-type-tag {
-    font-size: 10px;
-    padding: 1px 7px;
-    border-radius: 20px;
-    background: var(--tag-bg);
-    color: var(--tag-text);
-    font-weight: 500;
+    font-size: 10px; padding: 1px 7px; border-radius: 20px; font-weight: 500;
   }
   .msg-type-tag.to { background: #ede8fa; color: #7c5cc8; }
   .msg-type-tag.dm { background: #e8f4f0; color: #3a8c78; }
   .msg-type-tag.pinned { background: #faf0e0; color: #b07830; }
 
-  .card-sender {
-    font-weight: 500;
-    font-size: 13px;
-    color: var(--text-primary);
-    margin-bottom: 4px;
-  }
-
   .card-body {
-    color: var(--text-secondary);
-    font-size: 13px;
-    line-height: 1.6;
-    white-space: pre-wrap;
-    word-break: break-word;
-    height: 84px;
-    display: -webkit-box;
-    -webkit-line-clamp: 4;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-    margin-top: 8px;
+    color: var(--text-secondary); font-size: 13px; line-height: 1.6;
+    height: 84px; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical;
+    overflow: hidden; margin-top: 8px;
   }
-
-  .card-time {
-    font-size: 11px;
-    color: var(--text-muted);
-    font-family: 'DM Mono', monospace;
-    margin-left: auto;
-  }
+  .card-time { font-size: 11px; color: var(--text-muted); margin-left: auto; font-family: 'DM Mono'; }
 
   .card-actions {
-    display: flex; gap: 8px;
-    margin-top: auto;
-    padding-top: 12px;
-    border-top: 1px solid var(--border-subtle);
+    display: flex; gap: 8px; margin-top: auto; padding-top: 12px; border-top: 1px solid var(--border-subtle);
   }
 
   .btn-done, .btn-stock {
-    flex: 1;
-    padding: 8px;
-    border-radius: var(--radius-sm);
-    border: 1px solid var(--border);
-    cursor: pointer;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 12px;
-    font-weight: 500;
-    transition: all 0.15s;
-    display: flex; align-items: center; justify-content: center; gap: 5px;
+    flex: 1; padding: 8px; border-radius: var(--radius-sm); border: 1px solid var(--border);
+    cursor: pointer; font-size: 12px; font-weight: 500; transition: all 0.15s;
   }
   .btn-done { background: var(--surface); color: var(--text-secondary); }
-  .btn-done:hover { background: var(--tag-bg); color: var(--text-primary); border-color: var(--text-secondary); }
   .btn-stock { background: var(--text-primary); color: #fff; border-color: var(--text-primary); }
-  .btn-stock:hover { background: #333; }
 
-  /* ===== EMPTY STATE ===== */
   .empty-state { text-align: center; padding: 60px 20px; color: var(--text-muted); }
-  .empty-state .icon { font-size: 32px; margin-bottom: 12px; }
-  .empty-state .title { font-size: 14px; color: var(--text-secondary); margin-bottom: 6px; }
-  .empty-state .sub { font-size: 12px; }
 
-  /* ===== STOCK VIEW ===== */
   .stock-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 14px 16px;
-    display: flex;
-    align-items: flex-start;
-    gap: 12px;
-    box-shadow: var(--shadow);
-    margin-bottom: 8px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 14px 16px; display: flex; align-items: flex-start; gap: 12px; margin-bottom: 8px;
   }
-  .stock-card-body { flex: 1; min-width: 0; }
-  .stock-card-sender { font-weight: 500; font-size: 13px; margin-bottom: 2px; }
-  .stock-card-text { font-size: 12px; color: var(--text-secondary); line-height: 1.5;
-    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-  .stock-card-room { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
-  .btn-unstock {
-    padding: 4px 10px; border-radius: 6px; border: 1px solid var(--border);
-    background: var(--surface); cursor: pointer; font-size: 11px; color: var(--text-secondary);
-    white-space: nowrap; transition: all 0.15s;
-  }
-  .btn-unstock:hover { border-color: var(--text-secondary); color: var(--text-primary); }
 
-  /* ===== SETTINGS MODAL ===== */
   .overlay {
     display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.3); z-index: 200;
     backdrop-filter: blur(2px); align-items: center; justify-content: center;
   }
   .overlay.open { display: flex; }
-  .modal {
-    background: var(--surface); border-radius: 16px; padding: 28px; width: 420px;
-    max-width: calc(100vw - 32px); box-shadow: 0 20px 60px rgba(0,0,0,0.12);
-  }
-  .modal h2 { font-size: 16px; font-weight: 500; margin-bottom: 20px; }
-  .form-group { margin-bottom: 16px; }
-  .form-label { font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; display: block; }
-  .form-input {
-    width: 100%; padding: 9px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm);
-    font-family: 'DM Mono', monospace; font-size: 13px; color: var(--text-primary); background: var(--bg);
-    outline: none; transition: border-color 0.15s;
-  }
-  .form-input:focus { border-color: var(--text-secondary); }
-  .form-hint { font-size: 11px; color: var(--text-muted); margin-top: 5px; }
-  .modal-actions { display: flex; gap: 8px; margin-top: 20px; justify-content: flex-end; }
+  .modal { background: var(--surface); border-radius: 16px; padding: 28px; width: 420px; }
+  .form-input { width: 100%; padding: 9px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); margin-bottom: 12px; }
 
-  /* ===== TOAST ===== */
   .toast {
     position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(10px);
     background: var(--text-primary); color: #fff; padding: 10px 20px; border-radius: 20px; font-size: 12px;
-    opacity: 0; transition: all 0.25s; pointer-events: none; z-index: 300; white-space: nowrap;
+    opacity: 0; transition: all 0.25s; z-index: 300;
   }
   .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-
-  .demo-notice {
-    background: #faf0e0; border: 1px solid #f0d4a8; border-radius: var(--radius-sm);
-    padding: 10px 14px; font-size: 12px; color: #b07830; margin-bottom: 12px;
-    display: flex; align-items: center; gap: 8px;
-  }
 </style>
 </head>
 <body>
 <div class="app">
-
   <header>
     <div class="logo">CW <span>Focus</span></div>
     <div class="header-actions">
@@ -373,74 +236,45 @@
   </header>
 
   <div class="tabs">
-    <div class="tab active" id="tabInbox" onclick="switchTab('inbox')">
-      Inbox <span class="badge" id="inboxCount">0</span>
-    </div>
-    <div class="tab" id="tabStock" onclick="switchTab('stock')">
-      Stock <span class="badge" id="stockCount">0</span>
-    </div>
+    <div class="tab active" id="tabInbox" onclick="switchTab('inbox')">Inbox <span class="badge" id="inboxCount">0</span></div>
+    <div class="tab" id="tabStock" onclick="switchTab('stock')">Stock <span class="badge" id="stockCount">0</span></div>
   </div>
 
   <div class="filter-bar" id="filterBar">
-    <div class="toggle-chip on" id="filterTO" onclick="toggleFilter('to')">
-      <span class="dot"></span> @TO
-    </div>
-    <div class="toggle-chip on" id="filterDM" onclick="toggleFilter('dm')">
-      <span class="dot"></span> ダイレクト
-    </div>
-    <div class="toggle-chip on" id="filterPin" onclick="toggleFilter('pin')">
-      <span class="dot"></span> ピン止め
-    </div>
+    <div class="toggle-chip on" id="filterTo" onclick="toggleFilter('to')"><span class="dot"></span> @TO</div>
+    <div class="toggle-chip on" id="filterDm" onclick="toggleFilter('dm')"><span class="dot"></span> ダイレクト</div>
+    <div class="toggle-chip on" id="filterPin" onclick="toggleFilter('pin')"><span class="dot"></span> ピン止め</div>
   </div>
 
   <div id="viewInbox">
     <div class="status-bar">
-      <span id="statusText" style="color:var(--text-muted);font-size:12px;"></span>
+      <span id="statusText"></span>
       <div style="display:flex; gap:8px;">
         <button class="btn-reload" id="btnClearAll" onclick="clearAllInbox()">全て既読</button>
-        <button class="btn-reload" id="btnReload" onclick="fetchMessages()">
-          <span class="icon">↻</span> 更新
-        </button>
+        <button class="btn-reload" id="btnReload" onclick="fetchMessages()"><span class="icon">↻</span> 更新</button>
       </div>
-    </div>
-    <div id="demoNotice" class="demo-notice" style="display:none;">
-      ⚠ デモモード — サンプルデータを表示中。
     </div>
     <div class="card-list" id="cardList"></div>
     <div class="empty-state" id="emptyInbox" style="display:none;">
-      <div class="icon">✦</div>
       <div class="title">Inbox Zero</div>
-      <div class="sub">すべて処理しました</div>
     </div>
   </div>
 
   <div id="viewStock" style="display:none;">
-    <div class="status-bar">
-      <span style="font-size:12px;color:var(--text-muted);">後で確認するメッセージ</span>
-    </div>
+    <div class="status-bar"><span>後で確認するメッセージ</span></div>
     <div id="stockList"></div>
-    <div class="empty-state" id="emptyStock" style="display:none;">
-      <div class="icon">◇</div>
-      <div class="title">ストックなし</div>
-    </div>
+    <div class="empty-state" id="emptyStock" style="display:none;">ストックなし</div>
   </div>
-
 </div>
 
 <div class="overlay" id="settingsOverlay">
   <div class="modal">
     <h2>設定</h2>
-    <div class="form-group">
-      <label class="form-label">Chatwork API トークン</label>
-      <input class="form-input" id="apiKeyInput" type="password" placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx">
-    </div>
-    <div class="form-group">
-      <label class="form-label">自分のアカウントID</label>
-      <input class="form-input" id="myIdInput" type="text" placeholder="例: 123456">
-    </div>
-    <div class="modal-actions">
-      <button class="btn-secondary" onclick="closeSettings()">キャンセル</button>
-      <button class="btn-primary" onclick="saveSettings()">保存</button>
+    <input class="form-input" id="apiKeyInput" type="password" placeholder="APIトークン">
+    <input class="form-input" id="myIdInput" type="text" placeholder="自分のID">
+    <div style="display:flex; justify-content:flex-end; gap:8px;">
+      <button class="btn-reload" onclick="closeSettings()">キャンセル</button>
+      <button class="btn-reload" style="background:var(--text-primary); color:#fff;" onclick="saveSettings()">保存</button>
     </div>
   </div>
 </div>
@@ -449,13 +283,9 @@
 
 <script>
 let state = {
-  apiKey: '',
-  myId: '',
-  messages: [],
-  stock: [],
+  apiKey: '', myId: '', messages: [], stock: [],
   filters: { to: true, dm: true, pin: true },
-  tab: 'inbox',
-  isDemo: false,
+  tab: 'inbox'
 };
 const workerUrl = "https://cwf-proxy.axixa23.workers.dev";
 
@@ -470,207 +300,159 @@ function init() {
   }
   applyFiltersUI();
   renderStock();
-  updateCounts();
-  if (!state.apiKey) {
-    loadDemoMessages();
-    document.getElementById('demoNotice').style.display = 'flex';
-  } else {
-    fetchMessages();
-  }
+  if (state.apiKey) fetchMessages();
 }
 
 function persist() {
   localStorage.setItem('cw_focus', JSON.stringify({
-    apiKey: state.apiKey,
-    myId: state.myId,
-    stock: state.stock,
-    filters: state.filters,
+    apiKey: state.apiKey, myId: state.myId, stock: state.stock, filters: state.filters,
   }));
 }
 
 async function fetchMessages() {
-  if (!state.apiKey) { loadDemoMessages(); return; }
   const btn = document.getElementById('btnReload');
   btn.classList.add('spinning');
   setStatus('取得中…');
 
   try {
-    const roomsRes = await fetch(`${workerUrl}/proxy/rooms`, {
-      headers: { 'X-ChatWorkToken': state.apiKey }
-    });
-    if (!roomsRes.ok) throw new Error(`API error: ${roomsRes.status}`);
+    const roomsRes = await fetch(`${workerUrl}/proxy/rooms`, { headers: { 'X-ChatWorkToken': state.apiKey } });
     const rooms = await roomsRes.json();
 
-    // 未読がある、またはピン留め/DMのみに絞り、最大100部屋
-    const targetRooms = rooms
-      .filter(r => (r.unread_num > 0))
-      .slice(0, 100);
-
+    // 未読がある部屋を抽出
+    const unreadRooms = rooms.filter(r => r.unread_num > 0);
     const msgs = [];
-    for (const room of targetRooms) {
+
+    // 100部屋まで
+    for (const room of unreadRooms.slice(0, 100)) {
       try {
-        const msgsRes = await fetch(
-          `${workerUrl}/proxy/rooms/${room.room_id}/messages?force=0`,
-          { headers: { 'X-ChatWorkToken': state.apiKey } }
-        );
-        if (!msgsRes.ok) continue;
-        const roomMsgs = await msgsRes.json();
+        const res = await fetch(`${workerUrl}/proxy/rooms/${room.room_id}/messages?force=0`, { headers: { 'X-ChatWorkToken': state.apiKey } });
+        const roomMsgs = await res.json();
+        if (!Array.isArray(roomMsgs)) continue;
+
         for (const m of roomMsgs) {
-          const msgType = detectMsgType(m, room, state.myId);
-          if (!shouldShow(msgType)) continue;
+          const type = detectType(m, room);
           msgs.push({
             id: `${room.room_id}-${m.message_id}`,
-            roomId: room.room_id,
             roomName: room.name,
-            sender: m.account?.name || '不明',
+            sender: m.account.name,
             body: m.body,
             time: formatTime(m.send_time),
-            msgType,
+            msgType: type
           });
         }
       } catch(e) {}
     }
 
     state.messages = msgs;
-    state.isDemo = false;
-    setStatus(msgs.length === 0 ? '新しいメッセージはありません' : `${msgs.length}件のメッセージ`);
     renderCards();
     updateCounts();
+    setStatus(`${state.messages.filter(m => shouldShow(m.msgType)).length}件のメッセージ`);
   } catch(e) {
     setStatus('エラーが発生しました');
-    showToast('取得エラー: ' + e.message);
   } finally {
     btn.classList.remove('spinning');
   }
 }
 
-function detectMsgType(msg, room, myId) {
+function detectType(m, room) {
   if (room.type === 'direct') return 'dm';
-  if (room.sticky) return 'pinned';
-  if (myId && msg.body && msg.body.includes(`[To:${myId}]`)) return 'to';
+  if (state.myId && m.body.includes(`[To:${state.myId}]`)) return 'to';
+  if (room.sticky) return 'pin';
   return 'other';
 }
 
-function shouldShow(msgType) {
-  if (msgType === 'to' && state.filters.to) return true;
-  if (msgType === 'dm' && state.filters.dm) return true;
-  if (msgType === 'pinned' && state.filters.pin) return true;
-  return msgType === 'other';
-}
-
-function formatTime(unix) {
-  const d = new Date(unix * 1000);
-  const now = new Date();
-  const diffMin = Math.floor((now - d) / 60000);
-  if (diffMin < 1) return 'たった今';
-  if (diffMin < 60) return `${diffMin}分前`;
-  if (diffMin < 1440) return `${Math.floor(diffMin/60)}時間前`;
-  return `${d.getMonth()+1}/${d.getDate()}`;
-}
-
-function loadDemoMessages() {
-  state.messages = [
-    { id: 'demo1', roomName: 'プロジェクトA', sender: '田中 太郎', body: '[To:me] 資料確認お願いします。', time: '12分前', msgType: 'to' },
-    { id: 'demo2', roomName: 'ダイレクト: 鈴木', sender: '鈴木 花子', body: '明日の会議、16時からです。', time: '45分前', msgType: 'dm' }
-  ];
-  state.isDemo = true;
-  renderCards();
-  updateCounts();
+function shouldShow(type) {
+  // フィルタがONなら表示。それ以外のメッセージ(other)は常に表示
+  if (type === 'to') return state.filters.to;
+  if (type === 'dm') return state.filters.dm;
+  if (type === 'pin') return state.filters.pin;
+  return true; 
 }
 
 function renderCards() {
   const list = document.getElementById('cardList');
-  const empty = document.getElementById('emptyInbox');
   const visible = state.messages.filter(m => shouldShow(m.msgType));
-  if (visible.length === 0) {
-    list.innerHTML = ''; empty.style.display = 'block'; return;
-  }
-  empty.style.display = 'none';
-  list.innerHTML = visible.map(m => cardHTML(m)).join('');
-}
-
-function cardHTML(m) {
-  const typeLabel = { to: '@TO', dm: 'DM', pinned: 'ピン' }[m.msgType] || '';
-  const body = escHtml(m.body).replace(/\[To:[^\]]+\]/g, '<span style="color:#7c5cc8;font-weight:500">$&</span>');
-  return `
+  document.getElementById('emptyInbox').style.display = visible.length === 0 ? 'block' : 'none';
+  
+  list.innerHTML = visible.map(m => `
     <div class="card type-${m.msgType}" id="card-${m.id}">
       <div class="card-meta">
-        <span class="room-name">${escHtml(m.roomName)}</span>
-        ${typeLabel ? `<span class="msg-type-tag ${m.msgType}">${typeLabel}</span>` : ''}
+        <span class="room-name">${esc(m.roomName)}</span>
+        <span class="msg-type-tag ${m.msgType}">${m.msgType.toUpperCase()}</span>
         <span class="card-time">${m.time}</span>
       </div>
-      <div class="card-sender">${escHtml(m.sender)}</div>
-      <div class="card-body">${body}</div>
+      <div style="font-weight:500; font-size:13px;">${esc(m.sender)}</div>
+      <div class="card-body">${esc(m.body)}</div>
       <div class="card-actions">
         <button class="btn-done" onclick="doneCard('${m.id}')">✕ 無視</button>
         <button class="btn-stock" onclick="stockCard('${m.id}')">◆ ストック</button>
       </div>
-    </div>`;
+    </div>
+  `).join('');
 }
 
-function escHtml(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+function toggleFilter(key) {
+  state.filters[key] = !state.filters[key];
+  applyFiltersUI();
+  persist();
+  renderCards();
+  updateCounts();
+}
+
+function applyFiltersUI() {
+  ['to','dm','pin'].forEach(k => {
+    const el = document.getElementById('filter' + k.charAt(0).toUpperCase() + k.slice(1));
+    if (el) el.className = 'toggle-chip' + (state.filters[k] ? ' on' : '');
+  });
+}
+
+function updateCounts() {
+  const inbox = state.messages.filter(m => shouldShow(m.msgType)).length;
+  document.getElementById('inboxCount').textContent = inbox;
+  document.getElementById('stockCount').textContent = state.stock.length;
+}
+
+function clearAllInbox() {
+  if (!confirm('表示中のメッセージをクリアしますか？')) return;
+  state.messages = state.messages.filter(m => !shouldShow(m.msgType));
+  renderCards(); updateCounts();
 }
 
 function doneCard(id) {
   const el = document.getElementById('card-' + id);
-  if (el) el.classList.add('exiting');
+  el.classList.add('exiting');
   setTimeout(() => {
     state.messages = state.messages.filter(m => m.id !== id);
     renderCards(); updateCounts();
-  }, 380);
-}
-
-function clearAllInbox() {
-  if (state.messages.length === 0) return;
-  if (!confirm('表示されている全てのメッセージをクリアしますか？')) return;
-  document.querySelectorAll('.card').forEach(c => c.classList.add('exiting'));
-  setTimeout(() => {
-    state.messages = [];
-    renderCards(); updateCounts();
-    showToast('すべてクリアしました');
-  }, 380);
+  }, 300);
 }
 
 function stockCard(id) {
   const msg = state.messages.find(m => m.id === id);
-  const el = document.getElementById('card-' + id);
-  if (el) el.classList.add('stocking');
-  setTimeout(() => {
-    state.messages = state.messages.filter(m => m.id !== id);
-    if (!state.stock.find(s => s.id === id)) state.stock.push(msg);
-    persist(); renderCards(); renderStock(); updateCounts();
-    showToast('ストックしました');
-  }, 380);
-}
-
-function unstockCard(id) {
-  state.stock = state.stock.filter(s => s.id !== id);
-  persist(); renderStock(); updateCounts();
+  state.stock.push(msg);
+  persist();
+  doneCard(id);
+  renderStock();
+  showToast('ストックしました');
 }
 
 function renderStock() {
   const list = document.getElementById('stockList');
-  const empty = document.getElementById('emptyStock');
-  if (state.stock.length === 0) {
-    list.innerHTML = ''; empty.style.display = 'block'; return;
-  }
-  empty.style.display = 'none';
+  document.getElementById('emptyStock').style.display = state.stock.length === 0 ? 'block' : 'none';
   list.innerHTML = state.stock.map(m => `
     <div class="stock-card">
-      <div class="stock-card-body">
-        <div class="stock-card-sender">${escHtml(m.sender)}</div>
-        <div class="stock-card-text">${escHtml(m.body)}</div>
-        <div class="stock-card-room">${escHtml(m.roomName)} · ${m.time}</div>
+      <div style="flex:1;">
+        <div style="font-weight:500;">${esc(m.sender)}</div>
+        <div style="font-size:12px; color:var(--text-secondary);">${esc(m.body)}</div>
       </div>
-      <button class="btn-unstock" onclick="unstockCard('${m.id}')">削除</button>
-    </div>`).join('');
+      <button class="btn-reload" onclick="unstock('${m.id}')">削除</button>
+    </div>
+  `).join('');
 }
 
-function updateCounts() {
-  const visible = state.messages.filter(m => shouldShow(m.msgType));
-  document.getElementById('inboxCount').textContent = visible.length;
-  document.getElementById('stockCount').textContent = state.stock.length;
+function unstock(id) {
+  state.stock = state.stock.filter(s => s.id !== id);
+  persist(); renderStock(); updateCounts();
 }
 
 function switchTab(tab) {
@@ -681,46 +463,29 @@ function switchTab(tab) {
   document.getElementById('tabStock').className = 'tab' + (tab === 'stock' ? ' active' : '');
 }
 
-function toggleFilter(key) {
-  state.filters[key] = !state.filters[key];
-  applyFiltersUI(); persist(); renderCards(); updateCounts();
-}
+document.getElementById('btnFilter').onclick = () => {
+  const open = document.getElementById('filterBar').classList.toggle('open');
+  document.getElementById('btnFilter').classList.toggle('active', open);
+};
 
-function applyFiltersUI() {
-  ['to','dm','pin'].forEach(k => {
-    const el = document.getElementById('filter' + k.charAt(0).toUpperCase() + k.slice(1));
-    if (el) el.className = 'toggle-chip' + (state.filters[k] ? ' on' : '');
-  });
-}
-
-document.getElementById('btnFilter').addEventListener('click', () => {
-  const bar = document.getElementById('filterBar');
-  const btn = document.getElementById('btnFilter');
-  const open = bar.classList.toggle('open');
-  btn.classList.toggle('active', open);
-});
-
-document.getElementById('btnSettings').addEventListener('click', () => {
-  document.getElementById('apiKeyInput').value = state.apiKey;
-  document.getElementById('myIdInput').value = state.myId;
-  document.getElementById('settingsOverlay').classList.add('open');
-});
-
+document.getElementById('btnSettings').onclick = () => document.getElementById('settingsOverlay').classList.add('open');
 function closeSettings() { document.getElementById('settingsOverlay').classList.remove('open'); }
-
 function saveSettings() {
-  state.apiKey = document.getElementById('apiKeyInput').value.trim();
-  state.myId = document.getElementById('myIdInput').value.trim();
-  persist(); closeSettings();
-  state.apiKey ? fetchMessages() : loadDemoMessages();
+  state.apiKey = document.getElementById('apiKeyInput').value;
+  state.myId = document.getElementById('myIdInput').value;
+  persist(); closeSettings(); fetchMessages();
 }
 
-function setStatus(msg) { document.getElementById('statusText').textContent = msg; }
-
-function showToast(msg) {
+function formatTime(unix) {
+  const d = new Date(unix * 1000);
+  return `${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
+function setStatus(t) { document.getElementById('statusText').textContent = t; }
+function showToast(m) {
   const t = document.getElementById('toast');
-  t.textContent = msg; t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2200);
+  t.textContent = m; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2000);
 }
 
 init();
