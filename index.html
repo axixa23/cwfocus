@@ -101,7 +101,7 @@
 let state = {
   apiKey: '',
   myId: '',
-  messages: [], // ここに蓄積されていく
+  messages: [], 
   stock: [],
   filters: { to: true, dm: true, pin: true },
   tab: 'inbox',
@@ -176,11 +176,9 @@ async function fetchMessages() {
           { headers: { 'X-ChatWorkToken': state.apiKey } }
         );
 
-        if (msgsRes.status === 429) {
-          throw new Error('途中でAPI制限に達しました。');
-        }
-
+        if (msgsRes.status === 429) throw new Error('途中でAPI制限に達しました。');
         if (!msgsRes.ok) continue;
+
         let roomMsgs = await msgsRes.json();
         if (!Array.isArray(roomMsgs)) continue;
 
@@ -190,20 +188,20 @@ async function fetchMessages() {
         for (const m of unreadMsgs) {
           const msgId = `${room.room_id}-${m.message_id}`;
           
-          // 【修正2】既にリストにあるIDはスキップ（重複排除）
+          // 【修正2】重複排除：既にリストにあるIDはスキップ
           if (state.messages.some(existing => existing.id === msgId)) continue;
 
           const msgType = detectMsgType(m, room, state.myId);
-          if (!shouldShow(msgType)) continue;
-
-          // state.messages の先頭に追加
-          state.messages.unshift({
+          
+          // 【重要】ここでは shouldShow によるフィルタリングを行わず全て蓄積する
+          // これにより「後からフィルタをONにした時」にも表示されるようになる
+          state.messages.push({
             id: msgId,
             roomId: room.room_id,
             roomName: room.name,
             sender: m.account?.name || '不明',
             body: m.body,
-            sendTime: m.send_time, // ソート用
+            sendTime: m.send_time,
             time: formatTime(m.send_time),
             msgType,
           });
@@ -221,7 +219,7 @@ async function fetchMessages() {
     // 【修正3】全メッセージを送信時間順にソート（新しい順）
     state.messages.sort((a, b) => b.sendTime - a.sendTime);
 
-    // メッセージが多すぎると重くなるため、最新200件に制限（必要に応じて調整）
+    // メモリ肥大化防止（最新200件）
     if (state.messages.length > 200) {
       state.messages = state.messages.slice(0, 200);
     }
@@ -241,9 +239,19 @@ async function fetchMessages() {
 }
 
 function detectMsgType(msg, room, myId) {
+  // 1. ダイレクトチャット判定
   if (room.type === 'direct') return 'dm';
+  
+  // 2. 自分へのTO/返信判定
+  if (myId && msg.body) {
+    const hasTo = msg.body.includes(`[To:${myId}]`);
+    const hasReply = msg.body.includes(`[rp aid=${myId}]`);
+    if (hasTo || hasReply) return 'to';
+  }
+  
+  // 3. ピン留め判定
   if (room.sticky) return 'pin';
-  if (myId && msg.body && msg.body.includes(`[To:${myId}]`)) return 'to';
+  
   return 'other';
 }
 
@@ -287,6 +295,7 @@ function loadDemoMessages() {
 function renderCards() {
   const list = document.getElementById('cardList');
   const empty = document.getElementById('emptyInbox');
+  // 表示時にフィルタリング
   const visible = state.messages.filter(m => shouldShow(m.msgType));
   
   if (visible.length === 0) {
@@ -300,7 +309,7 @@ function renderCards() {
 
 function cardHTML(m) {
   const typeLabel = { to: '@TO', dm: 'DM', pin: 'ピン' }[m.msgType] || '';
-  const body = escHtml(m.body).replace(/\[To:[^\]]+\]/g, '<span style="color:#7c5cc8;font-weight:500">$&</span>');
+  const body = escHtml(m.body).replace(/\[(To|rp)[^\]]+\]/g, '<span style="color:#7c5cc8;font-weight:500">$&</span>');
   return `
     <div class="card type-${m.msgType}" id="card-${m.id}">
       <div class="card-meta">
@@ -331,13 +340,16 @@ function doneCard(id) {
 }
 
 function clearAllInbox() {
-  if (state.messages.length === 0) return;
+  const visible = state.messages.filter(m => shouldShow(m.msgType));
+  if (visible.length === 0) return;
   if (!confirm('表示されている全てのメッセージをクリアしますか？')) return;
+  
   document.querySelectorAll('.card').forEach(c => c.classList.add('exiting'));
   setTimeout(() => {
-    state.messages = [];
+    const visibleIds = visible.map(m => m.id);
+    state.messages = state.messages.filter(m => !visibleIds.includes(m.id));
     renderCards(); updateCounts();
-    showToast('すべてクリアしました');
+    showToast('表示分をクリアしました');
   }, 380);
 }
 
@@ -415,7 +427,7 @@ function saveSettings() {
   state.apiKey = document.getElementById('apiKeyInput').value.trim();
   state.myId = document.getElementById('myIdInput').value.trim();
   persist(); closeSettings();
-  state.messages = []; // 設定変更時は一旦クリア
+  state.messages = []; 
   state.apiKey ? fetchMessages() : loadDemoMessages();
 }
 
