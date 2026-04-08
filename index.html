@@ -101,7 +101,7 @@
 let state = {
   apiKey: '',
   myId: '',
-  messages: [],
+  messages: [], // ここに蓄積されていく
   stock: [],
   filters: { to: true, dm: true, pin: true },
   tab: 'inbox',
@@ -109,7 +109,6 @@ let state = {
 };
 const workerUrl = "https://cwf-proxy.axixa23.workers.dev";
 
-// DOMが読み込まれてから初期化を実行
 window.addEventListener('DOMContentLoaded', init);
 
 function init() {
@@ -159,17 +158,17 @@ async function fetchMessages() {
       headers: { 'X-ChatWorkToken': state.apiKey }
     });
 
-    // 429 API制限のハンドリング
     if (roomsRes.status === 429) {
-      throw new Error('API制限: 短時間に更新しすぎです。5分ほど待機してください。');
+      throw new Error('API制限: 5分ほど待機してください。');
     }
     if (!roomsRes.ok) throw new Error(`APIエラー: ${roomsRes.status}`);
     
     const rooms = await roomsRes.json();
-    // 負荷軽減のため、未読がある部屋の先頭40件に絞る
+    // 未読がある部屋に絞る
     const targetRooms = rooms.filter(r => r.unread_num > 0).slice(0, 40);
 
-    const msgs = [];
+    let newMsgsAdded = 0;
+
     for (const room of targetRooms) {
       try {
         const msgsRes = await fetch(
@@ -178,40 +177,59 @@ async function fetchMessages() {
         );
 
         if (msgsRes.status === 429) {
-          throw new Error('途中でAPI制限に達しました。一部のみ表示します。');
+          throw new Error('途中でAPI制限に達しました。');
         }
 
         if (!msgsRes.ok) continue;
-        const roomMsgs = await msgsRes.json();
+        let roomMsgs = await msgsRes.json();
         if (!Array.isArray(roomMsgs)) continue;
 
-        for (const m of roomMsgs) {
+        // 【修正1】未読分のみに絞り込む（末尾からunread_num件を取得）
+        const unreadMsgs = roomMsgs.slice(-room.unread_num);
+
+        for (const m of unreadMsgs) {
+          const msgId = `${room.room_id}-${m.message_id}`;
+          
+          // 【修正2】既にリストにあるIDはスキップ（重複排除）
+          if (state.messages.some(existing => existing.id === msgId)) continue;
+
           const msgType = detectMsgType(m, room, state.myId);
           if (!shouldShow(msgType)) continue;
 
-          msgs.push({
-            id: `${room.room_id}-${m.message_id}`,
+          // state.messages の先頭に追加
+          state.messages.unshift({
+            id: msgId,
             roomId: room.room_id,
             roomName: room.name,
             sender: m.account?.name || '不明',
             body: m.body,
+            sendTime: m.send_time, // ソート用
             time: formatTime(m.send_time),
             msgType,
           });
+          newMsgsAdded++;
         }
       } catch(e) {
         if (e.message.includes('API制限')) {
           showToast(e.message);
-          break; // 取得を中断して、そこまで取れた分を表示
+          break; 
         }
         console.error(e);
       }
     }
 
-    state.messages = msgs;
+    // 【修正3】全メッセージを送信時間順にソート（新しい順）
+    state.messages.sort((a, b) => b.sendTime - a.sendTime);
+
+    // メッセージが多すぎると重くなるため、最新200件に制限（必要に応じて調整）
+    if (state.messages.length > 200) {
+      state.messages = state.messages.slice(0, 200);
+    }
+
     state.isDemo = false;
     document.getElementById('demoNotice').style.display = 'none';
-    setStatus(msgs.length === 0 ? '新しいメッセージはありません' : `${msgs.length}件表示中`);
+    
+    setStatus(newMsgsAdded > 0 ? `${newMsgsAdded}件の新着を追加` : '新しいメッセージはありません');
     renderCards();
     updateCounts();
   } catch(e) {
@@ -230,7 +248,6 @@ function detectMsgType(msg, room, myId) {
 }
 
 function shouldShow(msgType) {
-  // 設定されたフィルタに合致するものだけを表示（otherは隠す）
   if (msgType === 'to') return state.filters.to;
   if (msgType === 'dm') return state.filters.dm;
   if (msgType === 'pin') return state.filters.pin;
@@ -259,8 +276,8 @@ function formatTime(unix) {
 
 function loadDemoMessages() {
   state.messages = [
-    { id: 'demo1', roomName: 'プロジェクトA', sender: '田中 太郎', body: '[To:me] 資料確認お願いします。', time: '12分前', msgType: 'to' },
-    { id: 'demo2', roomName: 'ダイレクト: 鈴木', sender: '鈴木 花子', body: '明日の会議、16時からです。', time: '45分前', msgType: 'dm' }
+    { id: 'demo1', roomName: 'プロジェクトA', sender: '田中 太郎', body: '[To:me] 資料確認お願いします。', time: '12分前', msgType: 'to', sendTime: Date.now()/1000 },
+    { id: 'demo2', roomName: 'ダイレクト: 鈴木', sender: '鈴木 花子', body: '明日の会議、16時からです。', time: '45分前', msgType: 'dm', sendTime: Date.now()/1000 - 1800 }
   ];
   state.isDemo = true;
   renderCards();
@@ -398,6 +415,7 @@ function saveSettings() {
   state.apiKey = document.getElementById('apiKeyInput').value.trim();
   state.myId = document.getElementById('myIdInput').value.trim();
   persist(); closeSettings();
+  state.messages = []; // 設定変更時は一旦クリア
   state.apiKey ? fetchMessages() : loadDemoMessages();
 }
 
