@@ -554,7 +554,7 @@ async function fetchMessages() {
       if (room.unread_num === 0) continue;
       try {
         const msgsRes = await fetch(
-          `${workerUrl}/proxy/rooms/${room.room_id}/messages?force=1`,
+          `${workerUrl}/proxy/rooms/${room.room_id}/messages?force=0`,
           { headers: { 'X-ChatWorkToken': state.apiKey } }
         );
         if (!msgsRes.ok) continue;
