@@ -488,7 +488,8 @@ let state = {
   lastFetched: null,
   isDemo: false,
 };
-
+const workerUrl = "https://cwf-proxy.axixa23.workers.dev";
+  
 // ===== INIT =====
 function init() {
   const saved = localStorage.getItem('cw_focus');
@@ -532,7 +533,7 @@ async function fetchMessages() {
 
   try {
     // Get rooms list
-    const roomsRes = await fetch('https://api.chatwork.com/v2/rooms', {
+    const roomsRes = await fetch(`${workerUrl}/proxy/rooms`, {
       headers: { 'X-ChatWorkToken': state.apiKey }
     });
     if (!roomsRes.ok) throw new Error(`API error: ${roomsRes.status}`);
@@ -553,7 +554,7 @@ async function fetchMessages() {
       if (room.unread_num === 0) continue;
       try {
         const msgsRes = await fetch(
-          `https://api.chatwork.com/v2/rooms/${room.room_id}/messages?force=0`,
+          `${workerUrl}/proxy/rooms/${room.room_id}/messages?force=0`,
           { headers: { 'X-ChatWorkToken': state.apiKey } }
         );
         if (!msgsRes.ok) continue;
