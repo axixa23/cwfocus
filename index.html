@@ -109,18 +109,26 @@ let state = {
 };
 const workerUrl = "https://cwf-proxy.axixa23.workers.dev";
 
+// DOMが読み込まれてから初期化を実行
+window.addEventListener('DOMContentLoaded', init);
+
 function init() {
   const saved = localStorage.getItem('cw_focus');
   if (saved) {
-    const d = JSON.parse(saved);
-    state.apiKey = d.apiKey || '';
-    state.myId = d.myId || '';
-    state.stock = d.stock || [];
-    state.filters = d.filters || { to: true, dm: true, pin: true };
+    try {
+      const d = JSON.parse(saved);
+      state.apiKey = d.apiKey || '';
+      state.myId = d.myId || '';
+      state.stock = d.stock || [];
+      state.filters = d.filters || { to: true, dm: true, pin: true };
+    } catch (e) {
+      console.error("Storage parse error", e);
+    }
   }
   applyFiltersUI();
   renderStock();
   updateCounts();
+  
   if (!state.apiKey) {
     loadDemoMessages();
     document.getElementById('demoNotice').style.display = 'flex';
@@ -141,6 +149,8 @@ function persist() {
 async function fetchMessages() {
   if (!state.apiKey) { loadDemoMessages(); return; }
   const btn = document.getElementById('btnReload');
+  if (btn.classList.contains('spinning')) return; 
+
   btn.classList.add('spinning');
   setStatus('取得中…');
 
@@ -148,13 +158,16 @@ async function fetchMessages() {
     const roomsRes = await fetch(`${workerUrl}/proxy/rooms`, {
       headers: { 'X-ChatWorkToken': state.apiKey }
     });
-    if (!roomsRes.ok) throw new Error(`API error: ${roomsRes.status}`);
-    const rooms = await roomsRes.json();
 
-    // 未読がある、またはピン留め/DMのみに絞り、最大100部屋
-    const targetRooms = rooms
-      .filter(r => (r.unread_num > 0))
-      .slice(0, 100);
+    // 429 API制限のハンドリング
+    if (roomsRes.status === 429) {
+      throw new Error('API制限: 短時間に更新しすぎです。5分ほど待機してください。');
+    }
+    if (!roomsRes.ok) throw new Error(`APIエラー: ${roomsRes.status}`);
+    
+    const rooms = await roomsRes.json();
+    // 負荷軽減のため、未読がある部屋の先頭40件に絞る
+    const targetRooms = rooms.filter(r => r.unread_num > 0).slice(0, 40);
 
     const msgs = [];
     for (const room of targetRooms) {
@@ -163,11 +176,19 @@ async function fetchMessages() {
           `${workerUrl}/proxy/rooms/${room.room_id}/messages?force=0`,
           { headers: { 'X-ChatWorkToken': state.apiKey } }
         );
+
+        if (msgsRes.status === 429) {
+          throw new Error('途中でAPI制限に達しました。一部のみ表示します。');
+        }
+
         if (!msgsRes.ok) continue;
         const roomMsgs = await msgsRes.json();
+        if (!Array.isArray(roomMsgs)) continue;
+
         for (const m of roomMsgs) {
           const msgType = detectMsgType(m, room, state.myId);
           if (!shouldShow(msgType)) continue;
+
           msgs.push({
             id: `${room.room_id}-${m.message_id}`,
             roomId: room.room_id,
@@ -178,17 +199,24 @@ async function fetchMessages() {
             msgType,
           });
         }
-      } catch(e) {}
+      } catch(e) {
+        if (e.message.includes('API制限')) {
+          showToast(e.message);
+          break; // 取得を中断して、そこまで取れた分を表示
+        }
+        console.error(e);
+      }
     }
 
     state.messages = msgs;
     state.isDemo = false;
-    setStatus(msgs.length === 0 ? '新しいメッセージはありません' : `${msgs.length}件のメッセージ`);
+    document.getElementById('demoNotice').style.display = 'none';
+    setStatus(msgs.length === 0 ? '新しいメッセージはありません' : `${msgs.length}件表示中`);
     renderCards();
     updateCounts();
   } catch(e) {
-    setStatus('エラーが発生しました');
-    showToast('取得エラー: ' + e.message);
+    setStatus(e.message.includes('API制限') ? 'API制限中' : 'エラーが発生しました', true);
+    showToast(e.message);
   } finally {
     btn.classList.remove('spinning');
   }
@@ -196,24 +224,25 @@ async function fetchMessages() {
 
 function detectMsgType(msg, room, myId) {
   if (room.type === 'direct') return 'dm';
-  if (room.sticky) return 'pinned';
+  if (room.sticky) return 'pin';
   if (myId && msg.body && msg.body.includes(`[To:${myId}]`)) return 'to';
   return 'other';
 }
 
 function shouldShow(msgType) {
+  // 設定されたフィルタに合致するものだけを表示（otherは隠す）
   if (msgType === 'to') return state.filters.to;
   if (msgType === 'dm') return state.filters.dm;
-  if (msgType === 'pinned') return state.filters.pin;
-  return true; 
+  if (msgType === 'pin') return state.filters.pin;
+  return false; 
 }
 
 function applyFiltersUI() {
   ['to','dm','pin'].forEach(k => {
-    const id = 'filter' + k.charAt(0).toUpperCase() + k.slice(1);
+    const id = 'filter' + k.toUpperCase();
     const el = document.getElementById(id);
     if (el) {
-      el.classList.toggle('on', !!state.filters[k]);
+      el.className = 'toggle-chip' + (state.filters[k] ? ' on' : '');
     }
   });
 }
@@ -242,15 +271,18 @@ function renderCards() {
   const list = document.getElementById('cardList');
   const empty = document.getElementById('emptyInbox');
   const visible = state.messages.filter(m => shouldShow(m.msgType));
+  
   if (visible.length === 0) {
-    list.innerHTML = ''; empty.style.display = 'block'; return;
+    list.innerHTML = '';
+    empty.style.display = 'block';
+    return;
   }
   empty.style.display = 'none';
   list.innerHTML = visible.map(m => cardHTML(m)).join('');
 }
 
 function cardHTML(m) {
-  const typeLabel = { to: '@TO', dm: 'DM', pinned: 'ピン' }[m.msgType] || '';
+  const typeLabel = { to: '@TO', dm: 'DM', pin: 'ピン' }[m.msgType] || '';
   const body = escHtml(m.body).replace(/\[To:[^\]]+\]/g, '<span style="color:#7c5cc8;font-weight:500">$&</span>');
   return `
     <div class="card type-${m.msgType}" id="card-${m.id}">
@@ -294,6 +326,7 @@ function clearAllInbox() {
 
 function stockCard(id) {
   const msg = state.messages.find(m => m.id === id);
+  if (!msg) return;
   const el = document.getElementById('card-' + id);
   if (el) el.classList.add('stocking');
   setTimeout(() => {
@@ -346,13 +379,6 @@ function toggleFilter(key) {
   applyFiltersUI(); persist(); renderCards(); updateCounts();
 }
 
-function applyFiltersUI() {
-  ['to','dm','pin'].forEach(k => {
-    const el = document.getElementById('filter' + k.charAt(0).toUpperCase() + k.slice(1));
-    if (el) el.className = 'toggle-chip' + (state.filters[k] ? ' on' : '');
-  });
-}
-
 document.getElementById('btnFilter').addEventListener('click', () => {
   const bar = document.getElementById('filterBar');
   const btn = document.getElementById('btnFilter');
@@ -375,15 +401,17 @@ function saveSettings() {
   state.apiKey ? fetchMessages() : loadDemoMessages();
 }
 
-function setStatus(msg) { document.getElementById('statusText').textContent = msg; }
+function setStatus(msg, isError = false) { 
+  const el = document.getElementById('statusText');
+  el.textContent = msg;
+  el.style.color = isError ? '#ff4d4f' : 'var(--text-muted)';
+}
 
 function showToast(msg) {
   const t = document.getElementById('toast');
   t.textContent = msg; t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 2200);
 }
-
-init();
 </script>
 </body>
 </html>
