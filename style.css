@@ -124,11 +124,11 @@
   .toggle-chip.on {
     background: var(--text-primary); color: #fff; border-color: var(--text-primary);
   }
-  .toggle-chip .dot {
+  .toggle-chip {
     width: 6px; height: 6px; border-radius: 50%;
     background: currentColor; opacity: 0.5;
   }
-  .toggle-chip.on .dot { opacity: 1; }
+  .toggle-chip.on { opacity: 1; }
 
   /* ===== STATUS BAR ===== */
   .status-bar {
