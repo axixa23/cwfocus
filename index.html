@@ -330,7 +330,7 @@ async function fetchMessages() {
  の形式を生成
 function buildReplyPrefix(msg) {
   if (msg.accountId) {
-    return `[To:${msg.accountId}]${msg.sender}\n`;
+    return `[To:${msg.accountId}]${msg.sender}さん\n`;
   }
   // accountId がない場合（デモ等）はプレフィックスなし
   return '';
@@ -640,8 +640,7 @@ async function sendStockReply(sid, msgId) {
   sendBtn.disabled = true;
   sendBtn.textContent = '送信中…';
 
-  const prefix = buildReplyPrefix(msg);
-  const fullBody = prefix + text;
+  const fullBody = text;
 
   try {
     const res = await fetch(`${workerUrl}/proxy/rooms/${msg.roomId}/messages`, {
