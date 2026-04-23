@@ -281,14 +281,14 @@ header {
   display: flex;
   flex-direction: column;
   /* ===== 統一高さ ===== */
-  height: 220px;
+  height: 280px;
 }
 .card:hover { box-shadow: var(--shadow-hover); }
 
 /* 返信欄展開時は高さを解除 */
 .card.reply-open {
   height: auto;
-  min-height: 220px;
+  min-height: 280px;
 }
 
 .card.exiting {
@@ -373,7 +373,7 @@ header {
   white-space: pre-wrap;
   word-break: break-word;
   display: -webkit-box;
-  -webkit-line-clamp: 3;
+  -webkit-line-clamp: 5;
   -webkit-box-orient: vertical;
   overflow: hidden;
   flex: 1;
