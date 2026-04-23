@@ -12,6 +12,18 @@
   <header>
     <div class="logo">CW <span>Focus</span></div>
     <div class="header-actions">
+      <!-- 自動更新トグル -->
+      <button class="btn-auto-toggle" id="btnAutoRefresh" title="自動更新" onclick="toggleAutoRefresh()">
+        <span class="auto-dot"></span>
+        <span id="autoLabel">Auto</span>
+      </button>
+      <!-- ダークモード切り替え -->
+      <button class="btn-icon" id="btnDark" title="ダークモード切り替え" onclick="toggleDark()">
+        <svg id="iconDark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+        </svg>
+      </button>
+      <!-- フィルター -->
       <button class="btn-icon" id="btnFilter" title="フィルター">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line><line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line><line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line><line x1="1" y1="14" x2="7" y2="14"></line><line x1="9" y1="8" x2="15" y2="8"></line><line x1="17" y1="16" x2="23" y2="16"></line></svg>
       </button>
@@ -51,7 +63,7 @@
       </div>
     </div>
     <div id="demoNotice" class="demo-notice" style="display:none;">
-      ⚠ デモモード — サンプルデータを表示中。<br>右上設定ボタンより、APIトークンの設定を行ってください
+      ⚠ デモモード — サンプルデータを表示中。右上設定ボタンよりAPIトークンを設定してください
     </div>
     <div class="card-list" id="cardList"></div>
     <div class="empty-state" id="emptyInbox" style="display:none;">
@@ -97,17 +109,24 @@
 <div class="toast" id="toast"></div>
 
 <script>
+// ===== STATE =====
 let state = {
   apiKey: '',
   myId: '',
-  messages: [], 
+  messages: [],
   stock: [],
   filters: { to: true, dm: true, pin: true },
   tab: 'inbox',
   isDemo: false,
+  darkMode: 'auto', // 'auto' | 'dark' | 'light'
+  autoRefresh: false,
 };
+let autoRefreshTimer = null;
+const AUTO_REFRESH_INTERVAL = 60 * 1000; // 1分
 const workerUrl = "https://cwf-proxy.axixa23.workers.dev";
+let isFetching = false;
 
+// ===== INIT =====
 window.addEventListener('DOMContentLoaded', init);
 
 function init() {
@@ -115,18 +134,23 @@ function init() {
   if (saved) {
     try {
       const d = JSON.parse(saved);
-      state.apiKey = d.apiKey || '';
-      state.myId = d.myId || '';
-      state.stock = d.stock || [];
-      state.filters = d.filters || { to: true, dm: true, pin: true };
+      state.apiKey     = d.apiKey     || '';
+      state.myId       = d.myId       || '';
+      state.stock      = d.stock      || [];
+      state.filters    = d.filters    || { to: true, dm: true, pin: true };
+      state.darkMode   = d.darkMode   || 'auto';
+      state.autoRefresh = d.autoRefresh || false;
     } catch (e) {
       console.error("Storage parse error", e);
     }
   }
+  applyDarkMode();
   applyFiltersUI();
+  applyAutoRefreshUI();
+  if (state.autoRefresh) startAutoRefresh();
   renderStock();
   updateCounts();
-  
+
   if (!state.apiKey) {
     loadDemoMessages();
     document.getElementById('demoNotice').style.display = 'flex';
@@ -137,17 +161,92 @@ function init() {
 
 function persist() {
   localStorage.setItem('cw_focus', JSON.stringify({
-    apiKey: state.apiKey,
-    myId: state.myId,
-    stock: state.stock,
-    filters: state.filters,
+    apiKey:       state.apiKey,
+    myId:         state.myId,
+    stock:        state.stock,
+    filters:      state.filters,
+    darkMode:     state.darkMode,
+    autoRefresh:  state.autoRefresh,
   }));
 }
 
+// ===== DARK MODE =====
+function applyDarkMode() {
+  const root = document.documentElement;
+  if (state.darkMode === 'dark') {
+    root.setAttribute('data-theme', 'dark');
+  } else if (state.darkMode === 'light') {
+    root.setAttribute('data-theme', 'light');
+  } else {
+    root.removeAttribute('data-theme'); // OS追従
+  }
+  // アイコン切り替え
+  const iconEl = document.getElementById('iconDark');
+  const isDarkNow = state.darkMode === 'dark' ||
+    (state.darkMode === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  iconEl.innerHTML = isDarkNow
+    ? `<circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>`
+    : `<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>`;
+}
+
+function toggleDark() {
+  // auto → dark → light → auto の順でサイクル
+  const cycle = { auto: 'dark', dark: 'light', light: 'auto' };
+  state.darkMode = cycle[state.darkMode] || 'auto';
+  applyDarkMode();
+  persist();
+}
+
+// OS設定変化を監視
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+  if (state.darkMode === 'auto') applyDarkMode();
+});
+
+// ===== AUTO REFRESH =====
+function applyAutoRefreshUI() {
+  const btn = document.getElementById('btnAutoRefresh');
+  if (state.autoRefresh) {
+    btn.classList.add('on');
+    document.getElementById('autoLabel').textContent = 'Auto ON';
+  } else {
+    btn.classList.remove('on');
+    document.getElementById('autoLabel').textContent = 'Auto';
+  }
+}
+
+function toggleAutoRefresh() {
+  state.autoRefresh = !state.autoRefresh;
+  applyAutoRefreshUI();
+  persist();
+  if (state.autoRefresh) {
+    startAutoRefresh();
+    showToast('自動更新ON — 1分ごとに更新します');
+  } else {
+    stopAutoRefresh();
+    showToast('自動更新OFF');
+  }
+}
+
+function startAutoRefresh() {
+  stopAutoRefresh(); // 重複防止
+  autoRefreshTimer = setInterval(() => {
+    fetchMessages();
+  }, AUTO_REFRESH_INTERVAL);
+}
+
+function stopAutoRefresh() {
+  if (autoRefreshTimer) {
+    clearInterval(autoRefreshTimer);
+    autoRefreshTimer = null;
+  }
+}
+
+// ===== FETCH =====
 async function fetchMessages() {
   if (!state.apiKey) { loadDemoMessages(); return; }
   const btn = document.getElementById('btnReload');
-  if (btn.classList.contains('spinning')) return; 
+  if (isFetching) return;
+  isFetching = true;
 
   btn.classList.add('spinning');
   setStatus('取得中…');
@@ -157,11 +256,9 @@ async function fetchMessages() {
       headers: { 'X-ChatWorkToken': state.apiKey }
     });
 
-    if (roomsRes.status === 429) {
-      throw new Error('API制限: 5分ほど待機してください。');
-    }
+    if (roomsRes.status === 429) throw new Error('API制限: 5分ほど待機してください。');
     if (!roomsRes.ok) throw new Error(`APIエラー: ${roomsRes.status}`);
-    
+
     const rooms = await roomsRes.json();
     const targetRooms = rooms.filter(r => r.unread_num > 0).slice(0, 40);
 
@@ -173,7 +270,6 @@ async function fetchMessages() {
           `${workerUrl}/proxy/rooms/${room.room_id}/messages?force=0`,
           { headers: { 'X-ChatWorkToken': state.apiKey } }
         );
-
         if (msgsRes.status === 429) throw new Error('途中でAPI制限に達しました。');
         if (!msgsRes.ok) continue;
 
@@ -181,14 +277,11 @@ async function fetchMessages() {
         if (!Array.isArray(roomMsgs)) continue;
 
         const unreadMsgs = roomMsgs.slice(-room.unread_num);
-
         for (const m of unreadMsgs) {
           const msgId = `${room.room_id}-${m.message_id}`;
-          
-          if (state.messages.some(existing => existing.id === msgId)) continue;
+          if (state.messages.some(ex => ex.id === msgId)) continue;
 
           const msgType = detectMsgType(m, room, state.myId);
-          
           state.messages.push({
             id: msgId,
             roomId: room.room_id,
@@ -199,29 +292,19 @@ async function fetchMessages() {
             time: formatTime(m.send_time),
             msgType,
           });
-
-          if (shouldShow(msgType)) {
-            newMsgsAdded++;
-          }
+          if (shouldShow(msgType)) newMsgsAdded++;
         }
       } catch(e) {
-        if (e.message.includes('API制限')) {
-          showToast(e.message);
-          break; 
-        }
+        if (e.message.includes('API制限')) { showToast(e.message); break; }
         console.error(e);
       }
     }
 
     state.messages.sort((a, b) => b.sendTime - a.sendTime);
-
-    if (state.messages.length > 200) {
-      state.messages = state.messages.slice(0, 200);
-    }
+    if (state.messages.length > 200) state.messages = state.messages.slice(0, 200);
 
     state.isDemo = false;
     document.getElementById('demoNotice').style.display = 'none';
-    
     setStatus(newMsgsAdded > 0 ? `${newMsgsAdded}件の新着を追加` : '新しいメッセージはありません');
     renderCards();
     updateCounts();
@@ -229,63 +312,106 @@ async function fetchMessages() {
     setStatus(e.message.includes('API制限') ? 'API制限中' : 'エラーが発生しました', true);
     showToast(e.message);
   } finally {
+    isFetching = false;
     btn.classList.remove('spinning');
   }
 }
 
+// ===== SEND REPLY =====
+async function sendReply(msgId) {
+  const msg = state.messages.find(m => m.id === msgId);
+  if (!msg) return;
+
+  const textarea = document.getElementById(`reply-ta-${msgId}`);
+  const sendBtn  = document.getElementById(`reply-send-${msgId}`);
+  const text = textarea.value.trim();
+  if (!text) return;
+
+  if (!state.apiKey) {
+    showToast('APIキーが設定されていません');
+    return;
+  }
+
+  sendBtn.disabled = true;
+  sendBtn.textContent = '送信中…';
+
+  try {
+    const res = await fetch(`${workerUrl}/proxy/rooms/${msg.roomId}/messages`, {
+      method: 'POST',
+      headers: {
+        'X-ChatWorkToken': state.apiKey,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: `body=${encodeURIComponent(text)}&self_unread=0`,
+    });
+
+    if (!res.ok) throw new Error(`送信エラー: ${res.status}`);
+
+    showToast('送信しました');
+    textarea.value = '';
+    closeReply(msgId);
+  } catch(e) {
+    showToast(e.message);
+    sendBtn.disabled = false;
+    sendBtn.textContent = '送信';
+  }
+}
+
+// ===== DETECT / FILTER =====
 function detectMsgType(msg, room, myId) {
   if (room.sticky) return 'pin';
   if (room.type === 'direct') return 'dm';
   if (myId && msg.body) {
-    const hasTo = msg.body.includes(`[To:${myId}]`);
-    const hasReply = msg.body.includes(`[rp aid=${myId}]`);
-    if (hasTo || hasReply) return 'to';
+    if (msg.body.includes(`[To:${myId}]`) || msg.body.includes(`[rp aid=${myId}]`)) return 'to';
   }
   return 'other';
 }
 
 function shouldShow(msgType) {
-  if (msgType === 'to') return state.filters.to;
-  if (msgType === 'dm') return state.filters.dm;
+  if (msgType === 'to')  return state.filters.to;
+  if (msgType === 'dm')  return state.filters.dm;
   if (msgType === 'pin') return state.filters.pin;
-  return false; 
+  return false;
 }
 
 function applyFiltersUI() {
   ['to','dm','pin'].forEach(k => {
-    const id = 'filter' + k.toUpperCase();
-    const el = document.getElementById(id);
-    if (el) {
-      el.className = 'toggle-chip' + (state.filters[k] ? ' on' : '');
-    }
+    const el = document.getElementById('filter' + k.toUpperCase());
+    if (el) el.className = 'toggle-chip' + (state.filters[k] ? ' on' : '');
   });
 }
 
+// ===== FORMAT =====
 function formatTime(unix) {
   const d = new Date(unix * 1000);
-  const now = new Date();
-  const diffMin = Math.floor((now - d) / 60000);
-  if (diffMin < 1) return 'たった今';
-  if (diffMin < 60) return `${diffMin}分前`;
+  const diffMin = Math.floor((Date.now() - d) / 60000);
+  if (diffMin < 1)    return 'たった今';
+  if (diffMin < 60)   return `${diffMin}分前`;
   if (diffMin < 1440) return `${Math.floor(diffMin/60)}時間前`;
   return `${d.getMonth()+1}/${d.getDate()}`;
 }
 
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ===== DEMO =====
 function loadDemoMessages() {
   state.messages = [
     { id: 'demo1', roomId: '0', roomName: 'プロジェクトA', sender: '田中 太郎', body: '[To:me] 資料確認お願いします。', time: '12分前', msgType: 'to', sendTime: Date.now()/1000 },
-    { id: 'demo2', roomId: '0', roomName: 'ダイレクト: 鈴木', sender: '鈴木 花子', body: '明日の会議、16時からです。', time: '45分前', msgType: 'dm', sendTime: Date.now()/1000 - 1800 }
+    { id: 'demo2', roomId: '0', roomName: 'ダイレクト: 鈴木', sender: '鈴木 花子', body: '明日の会議、16時からです。よろしくお願いします。', time: '45分前', msgType: 'dm', sendTime: Date.now()/1000 - 1800 },
   ];
   state.isDemo = true;
   renderCards();
   updateCounts();
 }
 
+// ===== RENDER =====
 function renderCards() {
-  const list = document.getElementById('cardList');
+  const list  = document.getElementById('cardList');
   const empty = document.getElementById('emptyInbox');
   const visible = state.messages.filter(m => shouldShow(m.msgType));
-  
+
   if (visible.length === 0) {
     list.innerHTML = '';
     empty.style.display = 'block';
@@ -312,16 +438,56 @@ function cardHTML(m) {
       <div class="card-sender">${escHtml(m.sender)}</div>
       <div class="card-body">${body}</div>
       <div class="card-actions">
-        <button class="btn-done" onclick="doneCard('${m.id}')">✕ 無視</button>
+        <button class="btn-done"  onclick="doneCard('${m.id}')">✕ 無視</button>
+        <button class="btn-reply" id="reply-btn-${m.id}" onclick="toggleReply('${m.id}')">↩ 返信</button>
         <button class="btn-stock" onclick="stockCard('${m.id}')">◆ ストック</button>
+      </div>
+      <div class="reply-panel" id="reply-panel-${m.id}">
+        <textarea
+          class="reply-textarea"
+          id="reply-ta-${m.id}"
+          placeholder="返信メッセージを入力…"
+          onkeydown="handleReplyKey(event, '${m.id}')"
+        ></textarea>
+        <div class="reply-actions">
+          <button class="btn-reply-cancel" onclick="closeReply('${m.id}')">キャンセル</button>
+          <button class="btn-reply-send" id="reply-send-${m.id}" onclick="sendReply('${m.id}')">↑ 送信</button>
+        </div>
       </div>
     </div>`;
 }
 
-function escHtml(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+// ===== REPLY HELPERS =====
+function toggleReply(id) {
+  const panel = document.getElementById(`reply-panel-${id}`);
+  const btn   = document.getElementById(`reply-btn-${id}`);
+  const card  = document.getElementById(`card-${id}`);
+  const isOpen = panel.classList.toggle('open');
+  btn.classList.toggle('active', isOpen);
+  card.classList.toggle('reply-open', isOpen);
+  if (isOpen) {
+    setTimeout(() => document.getElementById(`reply-ta-${id}`)?.focus(), 50);
+  }
 }
 
+function closeReply(id) {
+  const panel = document.getElementById(`reply-panel-${id}`);
+  const btn   = document.getElementById(`reply-btn-${id}`);
+  const card  = document.getElementById(`card-${id}`);
+  if (panel) panel.classList.remove('open');
+  if (btn)   btn.classList.remove('active');
+  if (card)  card.classList.remove('reply-open');
+}
+
+// Cmd/Ctrl+Enter で送信
+function handleReplyKey(e, id) {
+  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+    e.preventDefault();
+    sendReply(id);
+  }
+}
+
+// ===== CARD ACTIONS =====
 function doneCard(id) {
   const el = document.getElementById('card-' + id);
   if (el) el.classList.add('exiting');
@@ -335,11 +501,11 @@ function clearAllInbox() {
   const visible = state.messages.filter(m => shouldShow(m.msgType));
   if (visible.length === 0) return;
   if (!confirm('表示されている全てのメッセージをクリアしますか？')) return;
-  
+
   document.querySelectorAll('.card').forEach(c => c.classList.add('exiting'));
   setTimeout(() => {
-    const visibleIds = visible.map(m => m.id);
-    state.messages = state.messages.filter(m => !visibleIds.includes(m.id));
+    const ids = visible.map(m => m.id);
+    state.messages = state.messages.filter(m => !ids.includes(m.id));
     renderCards(); updateCounts();
     showToast('表示分をクリアしました');
   }, 380);
@@ -364,7 +530,7 @@ function unstockCard(id) {
 }
 
 function renderStock() {
-  const list = document.getElementById('stockList');
+  const list  = document.getElementById('stockList');
   const empty = document.getElementById('emptyStock');
   if (state.stock.length === 0) {
     list.innerHTML = ''; empty.style.display = 'block'; return;
@@ -372,22 +538,92 @@ function renderStock() {
   empty.style.display = 'none';
   list.innerHTML = state.stock.map(m => {
     const roomUrl = `https://www.chatwork.com/#!rid${m.roomId}`;
+    const sid = `stock-${m.id}`;
     return `
-    <div class="stock-card">
+    <div class="stock-card" id="sc-${sid}">
       <div class="stock-card-body">
         <div class="stock-card-sender">${escHtml(m.sender)}</div>
         <div class="stock-card-text">${escHtml(m.body)}</div>
         <div class="stock-card-room">
-          <a href="${roomUrl}" target="_blank" rel="noopener noreferrer">
-            ${escHtml(m.roomName)}
-          </a>
+          <a href="${roomUrl}" target="_blank" rel="noopener noreferrer">${escHtml(m.roomName)}</a>
           · ${m.time}
         </div>
       </div>
-      <button class="btn-unstock" onclick="unstockCard('${m.id}')">削除</button>
-    </div>`}).join('');
+      <div class="stock-card-actions">
+        <button class="btn-reply" id="reply-btn-${sid}" onclick="toggleStockReply('${sid}','${m.id}')">↩ 返信</button>
+        <button class="btn-unstock" onclick="unstockCard('${m.id}')">削除</button>
+      </div>
+      <div class="reply-panel" id="reply-panel-${sid}">
+        <textarea
+          class="reply-textarea"
+          id="reply-ta-${sid}"
+          placeholder="返信メッセージを入力…"
+          onkeydown="handleStockReplyKey(event,'${sid}','${m.id}')"
+        ></textarea>
+        <div class="reply-actions">
+          <button class="btn-reply-cancel" onclick="closeStockReply('${sid}')">キャンセル</button>
+          <button class="btn-reply-send" id="reply-send-${sid}" onclick="sendStockReply('${sid}','${m.id}')">↑ 送信</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
 }
 
+function toggleStockReply(sid, msgId) {
+  const panel = document.getElementById(`reply-panel-${sid}`);
+  const btn   = document.getElementById(`reply-btn-${sid}`);
+  const isOpen = panel.classList.toggle('open');
+  btn.classList.toggle('active', isOpen);
+  if (isOpen) setTimeout(() => document.getElementById(`reply-ta-${sid}`)?.focus(), 50);
+}
+
+function closeStockReply(sid) {
+  document.getElementById(`reply-panel-${sid}`)?.classList.remove('open');
+  document.getElementById(`reply-btn-${sid}`)?.classList.remove('active');
+}
+
+function handleStockReplyKey(e, sid, msgId) {
+  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+    e.preventDefault();
+    sendStockReply(sid, msgId);
+  }
+}
+
+async function sendStockReply(sid, msgId) {
+  const msg = state.stock.find(m => m.id === msgId);
+  if (!msg) return;
+
+  const textarea = document.getElementById(`reply-ta-${sid}`);
+  const sendBtn  = document.getElementById(`reply-send-${sid}`);
+  const text = textarea.value.trim();
+  if (!text) return;
+
+  if (!state.apiKey) { showToast('APIキーが設定されていません'); return; }
+
+  sendBtn.disabled = true;
+  sendBtn.textContent = '送信中…';
+
+  try {
+    const res = await fetch(`${workerUrl}/proxy/rooms/${msg.roomId}/messages`, {
+      method: 'POST',
+      headers: {
+        'X-ChatWorkToken': state.apiKey,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: `body=${encodeURIComponent(text)}&self_unread=0`,
+    });
+    if (!res.ok) throw new Error(`送信エラー: ${res.status}`);
+    showToast('送信しました');
+    textarea.value = '';
+    closeStockReply(sid);
+  } catch(e) {
+    showToast(e.message);
+    sendBtn.disabled = false;
+    sendBtn.textContent = '↑ 送信';
+  }
+}
+
+// ===== UI HELPERS =====
 function updateCounts() {
   const visible = state.messages.filter(m => shouldShow(m.msgType));
   document.getElementById('inboxCount').textContent = visible.length;
@@ -396,8 +632,8 @@ function updateCounts() {
 
 function switchTab(tab) {
   state.tab = tab;
-  document.getElementById('viewInbox').style.display = tab === 'inbox' ? 'block' : 'none';
-  document.getElementById('viewStock').style.display = tab === 'stock' ? 'block' : 'none';
+  document.getElementById('viewInbox').style.display  = tab === 'inbox' ? 'block' : 'none';
+  document.getElementById('viewStock').style.display  = tab === 'stock' ? 'block' : 'none';
   document.getElementById('tabInbox').className = 'tab' + (tab === 'inbox' ? ' active' : '');
   document.getElementById('tabStock').className = 'tab' + (tab === 'stock' ? ' active' : '');
 }
@@ -416,21 +652,32 @@ document.getElementById('btnFilter').addEventListener('click', () => {
 
 document.getElementById('btnSettings').addEventListener('click', () => {
   document.getElementById('apiKeyInput').value = state.apiKey;
-  document.getElementById('myIdInput').value = state.myId;
+  document.getElementById('myIdInput').value   = state.myId;
   document.getElementById('settingsOverlay').classList.add('open');
 });
 
-function closeSettings() { document.getElementById('settingsOverlay').classList.remove('open'); }
+function closeSettings() {
+  document.getElementById('settingsOverlay').classList.remove('open');
+}
 
 function saveSettings() {
   state.apiKey = document.getElementById('apiKeyInput').value.trim();
-  state.myId = document.getElementById('myIdInput').value.trim();
+  state.myId   = document.getElementById('myIdInput').value.trim();
   persist(); closeSettings();
-  state.messages = []; 
-  state.apiKey ? fetchMessages() : loadDemoMessages();
+  // fetch中フラグとspinning状態をリセット（前回の fetch が詰まっていた場合の対策）
+  isFetching = false;
+  document.getElementById('btnReload').classList.remove('spinning');
+  state.messages = [];
+  if (state.apiKey) {
+    document.getElementById('demoNotice').style.display = 'none';
+    fetchMessages();
+  } else {
+    loadDemoMessages();
+    document.getElementById('demoNotice').style.display = 'flex';
+  }
 }
 
-function setStatus(msg, isError = false) { 
+function setStatus(msg, isError = false) {
   const el = document.getElementById('statusText');
   el.textContent = msg;
   el.style.color = isError ? '#ff4d4f' : 'var(--text-muted)';
