@@ -15,7 +15,7 @@
       <!-- 自動更新トグル -->
       <button class="btn-auto-toggle" id="btnAutoRefresh" title="自動更新" onclick="toggleAutoRefresh()">
         <span class="auto-dot"></span>
-        <span id="autoLabel">Auto</span>
+        <span id="autoLabel">Auto off</span>
       </button>
       <!-- ダークモード切り替え -->
       <button class="btn-icon" id="btnDark" title="ダークモード切り替え" onclick="toggleDark()">
@@ -55,6 +55,7 @@
   <div id="viewInbox">
     <div class="status-bar">
       <span id="statusText" style="color:var(--text-muted);font-size:12px;"></span>
+      <span id="lastUpdatedText" style="color:var(--text-muted);font-size:11px;font-family:'DM Mono',monospace;"></span>
       <div style="display:flex; gap:8px;">
         <button class="btn-reload" id="btnClearAll" onclick="clearAllInbox()">全て既読</button>
         <button class="btn-reload" id="btnReload" onclick="fetchMessages()">
@@ -207,10 +208,10 @@ function applyAutoRefreshUI() {
   const btn = document.getElementById('btnAutoRefresh');
   if (state.autoRefresh) {
     btn.classList.add('on');
-    document.getElementById('autoLabel').textContent = 'Auto ON';
+    document.getElementById('autoLabel').textContent = 'Auto on';
   } else {
     btn.classList.remove('on');
-    document.getElementById('autoLabel').textContent = 'Auto';
+    document.getElementById('autoLabel').textContent = 'Auto off';
   }
 }
 
@@ -229,6 +230,8 @@ function toggleAutoRefresh() {
 
 function startAutoRefresh() {
   stopAutoRefresh(); // 重複防止
+  // ON直後に即1回実行し、以降1分ごと
+  fetchMessages();
   autoRefreshTimer = setInterval(() => {
     fetchMessages();
   }, AUTO_REFRESH_INTERVAL);
@@ -247,6 +250,8 @@ async function fetchMessages() {
   const btn = document.getElementById('btnReload');
   if (isFetching) return;
   isFetching = true;
+  // 30秒経っても終わらない場合は強制リセット（詰まり防止）
+  const fetchTimeout = setTimeout(() => { isFetching = false; btn.classList.remove('spinning'); }, 30000);
 
   btn.classList.add('spinning');
   setStatus('取得中…');
@@ -287,6 +292,8 @@ async function fetchMessages() {
             roomId: room.room_id,
             roomName: room.name,
             sender: m.account?.name || '不明',
+            accountId: m.account?.account_id || '',
+            cwMessageId: m.message_id,
             body: m.body,
             sendTime: m.send_time,
             time: formatTime(m.send_time),
@@ -312,9 +319,21 @@ async function fetchMessages() {
     setStatus(e.message.includes('API制限') ? 'API制限中' : 'エラーが発生しました', true);
     showToast(e.message);
   } finally {
+    clearTimeout(fetchTimeout);
     isFetching = false;
     btn.classList.remove('spinning');
   }
+}
+
+// ===== REPLY PREFIX =====
+// [To:accountId]sender名
+ の形式を生成
+function buildReplyPrefix(msg) {
+  if (msg.accountId) {
+    return `[To:${msg.accountId}]${msg.sender}\n`;
+  }
+  // accountId がない場合（デモ等）はプレフィックスなし
+  return '';
 }
 
 // ===== SEND REPLY =====
@@ -398,8 +417,8 @@ function escHtml(s) {
 // ===== DEMO =====
 function loadDemoMessages() {
   state.messages = [
-    { id: 'demo1', roomId: '0', roomName: 'プロジェクトA', sender: '田中 太郎', body: '[To:me] 資料確認お願いします。', time: '12分前', msgType: 'to', sendTime: Date.now()/1000 },
-    { id: 'demo2', roomId: '0', roomName: 'ダイレクト: 鈴木', sender: '鈴木 花子', body: '明日の会議、16時からです。よろしくお願いします。', time: '45分前', msgType: 'dm', sendTime: Date.now()/1000 - 1800 },
+    { id: 'demo1', roomId: '0', roomName: 'プロジェクトA', sender: '田中 太郎', accountId: '111111', cwMessageId: 'demo1', body: '[To:me] 資料確認お願いします。', time: '12分前', msgType: 'to', sendTime: Date.now()/1000 },
+    { id: 'demo2', roomId: '0', roomName: 'ダイレクト: 鈴木', sender: '鈴木 花子', accountId: '222222', cwMessageId: 'demo2', body: '明日の会議、16時からです。よろしくお願いします。', time: '45分前', msgType: 'dm', sendTime: Date.now()/1000 - 1800 },
   ];
   state.isDemo = true;
   renderCards();
@@ -466,7 +485,15 @@ function toggleReply(id) {
   btn.classList.toggle('active', isOpen);
   card.classList.toggle('reply-open', isOpen);
   if (isOpen) {
-    setTimeout(() => document.getElementById(`reply-ta-${id}`)?.focus(), 50);
+    const ta = document.getElementById(`reply-ta-${id}`);
+    if (ta && !ta.value) {
+      const msg = state.messages.find(m => m.id === id);
+      if (msg) ta.value = buildReplyPrefix(msg);
+    }
+    setTimeout(() => {
+      const ta = document.getElementById(`reply-ta-${id}`);
+      if (ta) { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }
+    }, 50);
   }
 }
 
@@ -574,7 +601,17 @@ function toggleStockReply(sid, msgId) {
   const btn   = document.getElementById(`reply-btn-${sid}`);
   const isOpen = panel.classList.toggle('open');
   btn.classList.toggle('active', isOpen);
-  if (isOpen) setTimeout(() => document.getElementById(`reply-ta-${sid}`)?.focus(), 50);
+  if (isOpen) {
+    const ta = document.getElementById(`reply-ta-${sid}`);
+    if (ta && !ta.value) {
+      const msg = state.stock.find(m => m.id === msgId);
+      if (msg) ta.value = buildReplyPrefix(msg);
+    }
+    setTimeout(() => {
+      const ta = document.getElementById(`reply-ta-${sid}`);
+      if (ta) { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }
+    }, 50);
+  }
 }
 
 function closeStockReply(sid) {
@@ -603,6 +640,9 @@ async function sendStockReply(sid, msgId) {
   sendBtn.disabled = true;
   sendBtn.textContent = '送信中…';
 
+  const prefix = buildReplyPrefix(msg);
+  const fullBody = prefix + text;
+
   try {
     const res = await fetch(`${workerUrl}/proxy/rooms/${msg.roomId}/messages`, {
       method: 'POST',
@@ -610,7 +650,7 @@ async function sendStockReply(sid, msgId) {
         'X-ChatWorkToken': state.apiKey,
         'Content-Type': 'application/x-www-form-urlencoded',
       },
-      body: `body=${encodeURIComponent(text)}&self_unread=0`,
+      body: `body=${encodeURIComponent(fullBody)}&self_unread=0`,
     });
     if (!res.ok) throw new Error(`送信エラー: ${res.status}`);
     showToast('送信しました');
@@ -681,6 +721,13 @@ function setStatus(msg, isError = false) {
   const el = document.getElementById('statusText');
   el.textContent = msg;
   el.style.color = isError ? '#ff4d4f' : 'var(--text-muted)';
+  // 成功系のステータス更新時に最終更新時刻を記録
+  if (!isError) {
+    const now = new Date();
+    const ts = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+    const ltEl = document.getElementById('lastUpdatedText');
+    if (ltEl) ltEl.textContent = `（最終更新 ${ts}）`;
+  }
 }
 
 function showToast(msg) {
